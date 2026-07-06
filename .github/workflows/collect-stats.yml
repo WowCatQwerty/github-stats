@@ -1,1 +1,78 @@
+name: Collect GitHub Stats
 
+on:
+  schedule:
+    # Запуск каждые 14 дней в 3:00 UTC
+    - cron: '0 3 */14 * *'
+  # Или можно запускать ежедневно, чтобы не пропустить данные:
+  # - cron: '0 3 * * *'
+  workflow_dispatch:  # Ручной запуск через кнопку
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  collect-and-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Restore database cache
+        uses: actions/cache@v4
+        with:
+          path: data/stats.db
+          key: stats-db-${{ github.run_id }}
+          restore-keys: |
+            stats-db-
+
+      - name: Collect stats
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPOS: ${{ vars.REPOS || 'WowCatQwerty/vps-net-stat' }}
+          DB_PATH: data/stats.db
+        run: python collect_stats.py
+
+      - name: Generate dashboard
+        env:
+          REPOS: ${{ vars.REPOS || 'WowCatQwerty/vps-net-stat' }}
+          DB_PATH: data/stats.db
+          OUTPUT_PATH: docs/index.html
+        run: python generate_dashboard.py
+
+      - name: Commit database
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/stats.db
+          git diff --cached --quiet || git commit -m "Update stats DB [$(date +%Y-%m-%d)]"
+          git push
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
