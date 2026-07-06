@@ -41,7 +41,7 @@ jobs:
 
       - name: Collect stats
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
           REPOS: ${{ vars.REPOS || 'WowCatQwerty/vps-net-stat' }}
           DB_PATH: data/stats.db
         run: python collect_stats.py
@@ -58,3 +58,17 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add data/stats.db
+          git diff --cached --quiet || git commit -m "Update stats DB [$(date +%Y-%m-%d)]"
+          git push
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
