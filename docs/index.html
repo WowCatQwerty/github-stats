@@ -177,7 +177,10 @@
                     <button onclick="switchPeriod('views', 'all')">All</button>
                 </div>
             </div>
-            <div class="chart-total" id="viewsTotal">14 <span>total views</span></div>
+            <div class="chart-total" id="viewsTotal">
+                <span id="viewsTotalCount">14</span> total · 
+                <span id="viewsUniqueCount" style="color: var(--text-muted)">3</span> unique
+            </div>
             <div class="chart-wrapper">
                 <canvas id="viewsChart"></canvas>
             </div>
@@ -192,7 +195,10 @@
                     <button onclick="switchPeriod('clones', 'all')">All</button>
                 </div>
             </div>
-            <div class="chart-total clones-total" id="clonesTotal">490 <span>total clones</span></div>
+            <div class="chart-total clones-total" id="clonesTotal">
+                <span id="clonesTotalCount">490</span> total · 
+                <span id="clonesUniqueCount" style="color: var(--text-muted)">261</span> unique
+            </div>
             <div class="chart-wrapper">
                 <canvas id="clonesChart"></canvas>
             </div>
@@ -213,7 +219,7 @@
         </div>
 
         <footer>
-            Updated: 2026-07-06 15:12 · Auto-collect every 7 days
+            Updated: 2026-07-06 15:18 · Auto-collect every 7 days
         </footer>
     </div>
 
