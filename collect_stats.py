@@ -15,6 +15,8 @@ from pathlib import Path
 
 # ============ КОНФИГУРАЦИЯ ============
 # Токен GitHub (с правами на чтение трафика репозитория)
+# Для traffic API нужен Personal Access Token (PAT) с правами repo + read:user
+# GITHUB_TOKEN от Actions НЕ подходит для traffic API!
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
 # Список репозиториев для отслеживания (owner/repo)
 REPOS = os.environ.get("REPOS", "WowCatQwerty/vps-net-stat").split(",")
@@ -148,6 +150,9 @@ def api_get(url, token=GITHUB_TOKEN):
             return None
         if resp.status_code == 404:
             print(f"⚠ Не найдено: {url}")
+            return None
+        if resp.status_code == 202:
+            print(f"⚠ Данные ещё собираются (202): {url}")
             return None
         resp.raise_for_status()
         return resp.json()
@@ -283,14 +288,24 @@ def collect_commits(repo):
     if not data:
         return
 
+    # data — список списков: [timestamp, additions, deletions]
+    # Некоторые элементы могут быть пустыми или иметь неправильный формат
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     for week in data:
-        week_date = datetime.fromtimestamp(week[0]).strftime("%Y-%m-%d")
-        c.execute("""
-            INSERT OR REPLACE INTO commits (repo, week, total, additions, deletions)
-            VALUES (?, ?, ?, ?, ?)
-        """, (repo, week_date, week[1], week[2], abs(week[3])))
+        if not isinstance(week, list) or len(week) < 3:
+            continue
+        try:
+            week_date = datetime.fromtimestamp(week[0]).strftime("%Y-%m-%d")
+            additions = week[1] if len(week) > 1 else 0
+            deletions = abs(week[2]) if len(week) > 2 else 0
+            c.execute("""
+                INSERT OR REPLACE INTO commits (repo, week, total, additions, deletions)
+                VALUES (?, ?, ?, ?, ?)
+            """, (repo, week_date, additions + deletions, additions, deletions))
+        except (IndexError, TypeError, ValueError) as e:
+            print(f"  ⚠ Пропускаю некорректную неделю: {week} — {e}")
+            continue
     conn.commit()
     conn.close()
     print(f"  ✓ Commits: {len(data)} недель")
