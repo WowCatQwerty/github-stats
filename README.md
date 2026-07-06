@@ -1,46 +1,66 @@
 # 📊 GitHub Stats Tracker
 
-Автоматический сборщик статистики GitHub-репозиториев с красивым дашбордом на GitHub Pages.
+Автоматический сборщик статистики GitHub-репозиториев с дашбордом на GitHub Pages.
 
 ## Что отслеживается
 
 | Метрика | Описание | Источник |
 |---------|----------|----------|
-| ⭐ Stars Over Time | Накопительный рост звёздочек | GitHub API |
-| 👁 Repo Views | Просмотры страницы репозитория | GitHub Traffic API (14 дней) |
-| 📥 Repo Clones | Клонирования репозитория | GitHub Traffic API (14 дней) |
+| ⭐ Stars | Всего звёздочек | GitHub API |
+| 🍴 Forks | Всего форков | GitHub API |
+| 👁 Views | Просмотры страницы репозитория | GitHub Traffic API (14 дней) |
+| 📥 Clones | Клонирования репозитория | GitHub Traffic API (14 дней) |
 | 🔗 Referring Sites | Источники трафика | GitHub Traffic API (14 дней) |
-| 📄 Popular Content | Самые посещаемые страницы | GitHub Traffic API (14 дней) |
-| 💻 Code Activity | Добавления/удаления строк | GitHub API |
-| 🐛 Issues | Открытые/закрытые issues | GitHub API |
 
-**Важно:** метрики Views, Clones, Referrers и Popular Content хранятся GitHub только 14 дней. Поэтому скрипт собирает их регулярно и сохраняет в SQLite — так данные накапливаются за всё время.
+**Важно:** Views, Clones и Referrers GitHub хранит только 14 дней. Скрипт собирает их каждые 7 дней и сохраняет в SQLite — так данные накапливаются за всё время.
 
-## Быстрый старт
+## Дашборд
+
+- **Stars** — просто цифра "всего"
+- **Views и Clones** — графики с переключателем Month / Year / All + сумма за период
+- **Referring Sites** — линейный график с переключателем периода
+
+## Настройка
 
 ### 1. Создай репозиторий
 
-Создай новый публичный репозиторий на GitHub (например, `github-stats`).
+Новый публичный репозиторий на GitHub (например, `github-stats`).
 
 ### 2. Скопируй файлы
 
-Скопируй всё содержимое этого репозитория в свой.
+Загрузи в репозиторий:
+- `collect_stats.py`
+- `generate_dashboard.py`
+- `.github/workflows/collect-stats.yml`
+- Создай папки `data/` и `docs/` (через создание файла `.gitkeep` внутри)
 
-### 3. Настрой GitHub Pages
+### 3. Создай PAT (Personal Access Token)
 
-В настройках репозитория → **Pages** → Source: **GitHub Actions**.
+Для сбора трафика нужен токен с правами `repo`:
 
-### 4. Настрой переменные (опционально)
+1. GitHub → **Settings** → **Developer settings** → **Personal access tokens** → **Tokens (classic)**
+2. **Generate new token**
+3. Имя: `github-stats`
+4. Scopes: **`repo`** (вся секция) + **`read:user`**
+5. **Generate** → скопируй токен
 
-В настройках репозитория → **Settings → Secrets and variables → Actions → Variables** добавь:
+### 4. Добавь токен в Secrets
 
-- `REPOS` — список репозиториев через запятую, например: `WowCatQwerty/vps-net-stat,WowCatQwerty/another-repo`
+В репозитории `github-stats`:
+- **Settings** → **Secrets and variables** → **Actions** → **New repository secret**
+- Name: `GH_PAT`
+- Secret: вставь скопированный токен
 
-По умолчанию отслеживается `WowCatQwerty/vps-net-stat`.
+### 5. Настрой GitHub Pages
 
-### 5. Запусти вручную
+- **Settings** → **Pages**
+- Source: **Deploy from a branch**
+- Branch: **`gh-pages`** → **`/(root)`**
+- Save
 
-Перейди в **Actions** → выбери workflow **"Collect GitHub Stats"** → **Run workflow**.
+### 6. Запусти
+
+**Actions** → **Collect GitHub Stats** → **Run workflow**
 
 Через пару минут дашборд будет доступен по адресу:
 ```
@@ -50,54 +70,54 @@ https://YOUR_USERNAME.github.io/github-stats/
 ## Как это работает
 
 ```
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│  GitHub Actions │────▶│  Python скрипт  │────▶│   SQLite DB     │
-│  (раз в 14 дн)  │     │  (collect_stats)│     │  (data/stats.db)│
-└─────────────────┘     └─────────────────┘     └─────────────────┘
-                                                            │
-                                                            ▼
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│  GitHub Pages   │◀────│  HTML дашборд   │◀────│  generate_      │
-│  (ваш сайт)     │     │  (docs/index)   │     │  dashboard.py   │
-└─────────────────┘     └─────────────────┘     └─────────────────┘
+GitHub Actions (раз в 7 дн)
+        │
+        ▼
+┌───────────────┐     ┌───────────────┐     ┌───────────────┐
+│ collect_stats │────▶│   SQLite DB   │────▶│   generate_   │
+│   .py         │     │  data/stats.db│     │  dashboard.py │
+└───────────────┘     └───────────────┘     └───────────────┘
+                                                    │
+                                                    ▼
+                                            ┌───────────────┐
+                                            │ docs/index.html│
+                                            └───────────────┘
+                                                    │
+                                                    ▼
+                                            ┌───────────────┐
+                                            │  gh-pages     │
+                                            │  (GitHub Pages)│
+                                            └───────────────┘
 ```
 
-## Структура проекта
+## Структура
 
 ```
 .
 ├── .github/workflows/
-│   └── collect-stats.yml    # GitHub Actions workflow
+│   └── collect-stats.yml    # Workflow (раз в 7 дней)
 ├── data/
-│   └── stats.db             # SQLite база данных (коммитится)
+│   └── stats.db             # SQLite база (коммитится)
 ├── docs/
-│   └── index.html           # Генерируемый дашборд
+│   └── index.html           # Дашборд (генерируется)
 ├── collect_stats.py         # Сбор данных
 ├── generate_dashboard.py    # Генерация HTML
 └── README.md
 ```
 
-## Добавление новых репозиториев
+## Добавление репозиториев
 
-Просто обнови переменную `REPOS` в настройках Actions:
+В настройках Actions переменная `REPOS`:
 ```
-REPOS = owner/repo1,owner/repo2,owner/repo3
+REPOS = owner/repo1,owner/repo2
 ```
 
-Следующий запуск соберёт данные для всех репозиториев.
+По умолчанию: `WowCatQwerty/vps-net-stat`
 
-## Кастомизация
+## Периодичность
 
-- **Цвета и стиль** — редактируй `generate_dashboard.py`, секция `<style>`
-- **Дополнительные метрики** — добавь в `collect_stats.py` новые API-эндпоинты
-- **Периодичность** — измени `cron` в workflow (сейчас раз в 14 дней)
-
-## Лимиты API
-
-- GitHub Actions: 2000 минут/месяц (бесплатно)
-- GitHub API: 5000 запросов/час (с `GITHUB_TOKEN`)
-- Скрипт делает ~10 запросов на репозиторий за запуск
-
-## Лицензия
-
-MIT
+Раз в 7 дней (воскресенье в 3:00 UTC). Можно изменить в workflow:
+```yaml
+schedule:
+  - cron: '0 3 * * 0'   # Каждое воскресенье
+```
