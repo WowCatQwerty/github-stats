@@ -84,7 +84,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
+            margin-bottom: 12px;
             flex-wrap: wrap;
             gap: 12px;
         }
@@ -92,6 +92,19 @@
             font-family: var(--font-mono);
             font-size: 1rem;
             color: var(--text);
+        }
+        .chart-total {
+            font-family: var(--font-mono);
+            font-size: 1.5rem;
+            color: var(--accent);
+            margin-bottom: 16px;
+        }
+        .chart-total.clones-total {
+            color: var(--accent-green);
+        }
+        .chart-total span {
+            font-size: 0.85rem;
+            color: var(--text-muted);
         }
         .period-tabs {
             display: flex;
@@ -150,7 +163,7 @@
         </header>
 
         <div class="stars-block">
-            <div class="stars-value">⭐ 1</div>
+            <div class="stars-value">⭐ 0</div>
             <div class="stars-label">stars total</div>
             <div class="forks-value">🍴 0 forks</div>
         </div>
@@ -164,6 +177,7 @@
                     <button onclick="switchPeriod('views', 'all')">All</button>
                 </div>
             </div>
+            <div class="chart-total" id="viewsTotal">14 <span>total views</span></div>
             <div class="chart-wrapper">
                 <canvas id="viewsChart"></canvas>
             </div>
@@ -178,6 +192,7 @@
                     <button onclick="switchPeriod('clones', 'all')">All</button>
                 </div>
             </div>
+            <div class="chart-total clones-total" id="clonesTotal">490 <span>total clones</span></div>
             <div class="chart-wrapper">
                 <canvas id="clonesChart"></canvas>
             </div>
@@ -198,7 +213,7 @@
         </div>
 
         <footer>
-            Updated: 2026-07-06 14:49 · Auto-collect every 7 days
+            Updated: 2026-07-06 15:12 · Auto-collect every 7 days
         </footer>
     </div>
 
@@ -210,6 +225,9 @@
         const viewsData = {"month": [{"date": "2026-06-21", "count": 0, "uniques": 0}, {"date": "2026-06-22", "count": 0, "uniques": 0}, {"date": "2026-06-23", "count": 0, "uniques": 0}, {"date": "2026-06-24", "count": 0, "uniques": 0}, {"date": "2026-06-25", "count": 1, "uniques": 1}, {"date": "2026-06-26", "count": 0, "uniques": 0}, {"date": "2026-06-27", "count": 0, "uniques": 0}, {"date": "2026-06-28", "count": 0, "uniques": 0}, {"date": "2026-06-29", "count": 0, "uniques": 0}, {"date": "2026-06-30", "count": 1, "uniques": 1}, {"date": "2026-07-01", "count": 0, "uniques": 0}, {"date": "2026-07-02", "count": 0, "uniques": 0}, {"date": "2026-07-03", "count": 0, "uniques": 0}, {"date": "2026-07-04", "count": 12, "uniques": 1}, {"date": "2026-07-05", "count": 0, "uniques": 0}], "year": [{"date": "2026-06-21", "count": 0, "uniques": 0}, {"date": "2026-06-22", "count": 0, "uniques": 0}, {"date": "2026-06-23", "count": 0, "uniques": 0}, {"date": "2026-06-24", "count": 0, "uniques": 0}, {"date": "2026-06-25", "count": 1, "uniques": 1}, {"date": "2026-06-26", "count": 0, "uniques": 0}, {"date": "2026-06-27", "count": 0, "uniques": 0}, {"date": "2026-06-28", "count": 0, "uniques": 0}, {"date": "2026-06-29", "count": 0, "uniques": 0}, {"date": "2026-06-30", "count": 1, "uniques": 1}, {"date": "2026-07-01", "count": 0, "uniques": 0}, {"date": "2026-07-02", "count": 0, "uniques": 0}, {"date": "2026-07-03", "count": 0, "uniques": 0}, {"date": "2026-07-04", "count": 12, "uniques": 1}, {"date": "2026-07-05", "count": 0, "uniques": 0}], "all": [{"date": "2026-06-21", "count": 0, "uniques": 0}, {"date": "2026-06-22", "count": 0, "uniques": 0}, {"date": "2026-06-23", "count": 0, "uniques": 0}, {"date": "2026-06-24", "count": 0, "uniques": 0}, {"date": "2026-06-25", "count": 1, "uniques": 1}, {"date": "2026-06-26", "count": 0, "uniques": 0}, {"date": "2026-06-27", "count": 0, "uniques": 0}, {"date": "2026-06-28", "count": 0, "uniques": 0}, {"date": "2026-06-29", "count": 0, "uniques": 0}, {"date": "2026-06-30", "count": 1, "uniques": 1}, {"date": "2026-07-01", "count": 0, "uniques": 0}, {"date": "2026-07-02", "count": 0, "uniques": 0}, {"date": "2026-07-03", "count": 0, "uniques": 0}, {"date": "2026-07-04", "count": 12, "uniques": 1}, {"date": "2026-07-05", "count": 0, "uniques": 0}]};
         const clonesData = {"month": [{"date": "2026-06-21", "count": 0, "uniques": 0}, {"date": "2026-06-22", "count": 0, "uniques": 0}, {"date": "2026-06-23", "count": 0, "uniques": 0}, {"date": "2026-06-24", "count": 0, "uniques": 0}, {"date": "2026-06-25", "count": 10, "uniques": 9}, {"date": "2026-06-26", "count": 35, "uniques": 22}, {"date": "2026-06-27", "count": 118, "uniques": 50}, {"date": "2026-06-28", "count": 7, "uniques": 4}, {"date": "2026-06-29", "count": 80, "uniques": 39}, {"date": "2026-06-30", "count": 40, "uniques": 22}, {"date": "2026-07-01", "count": 30, "uniques": 20}, {"date": "2026-07-02", "count": 51, "uniques": 31}, {"date": "2026-07-03", "count": 46, "uniques": 24}, {"date": "2026-07-04", "count": 35, "uniques": 20}, {"date": "2026-07-05", "count": 38, "uniques": 20}], "year": [{"date": "2026-06-21", "count": 0, "uniques": 0}, {"date": "2026-06-22", "count": 0, "uniques": 0}, {"date": "2026-06-23", "count": 0, "uniques": 0}, {"date": "2026-06-24", "count": 0, "uniques": 0}, {"date": "2026-06-25", "count": 10, "uniques": 9}, {"date": "2026-06-26", "count": 35, "uniques": 22}, {"date": "2026-06-27", "count": 118, "uniques": 50}, {"date": "2026-06-28", "count": 7, "uniques": 4}, {"date": "2026-06-29", "count": 80, "uniques": 39}, {"date": "2026-06-30", "count": 40, "uniques": 22}, {"date": "2026-07-01", "count": 30, "uniques": 20}, {"date": "2026-07-02", "count": 51, "uniques": 31}, {"date": "2026-07-03", "count": 46, "uniques": 24}, {"date": "2026-07-04", "count": 35, "uniques": 20}, {"date": "2026-07-05", "count": 38, "uniques": 20}], "all": [{"date": "2026-06-21", "count": 0, "uniques": 0}, {"date": "2026-06-22", "count": 0, "uniques": 0}, {"date": "2026-06-23", "count": 0, "uniques": 0}, {"date": "2026-06-24", "count": 0, "uniques": 0}, {"date": "2026-06-25", "count": 10, "uniques": 9}, {"date": "2026-06-26", "count": 35, "uniques": 22}, {"date": "2026-06-27", "count": 118, "uniques": 50}, {"date": "2026-06-28", "count": 7, "uniques": 4}, {"date": "2026-06-29", "count": 80, "uniques": 39}, {"date": "2026-06-30", "count": 40, "uniques": 22}, {"date": "2026-07-01", "count": 30, "uniques": 20}, {"date": "2026-07-02", "count": 51, "uniques": 31}, {"date": "2026-07-03", "count": 46, "uniques": 24}, {"date": "2026-07-04", "count": 35, "uniques": 20}, {"date": "2026-07-05", "count": 38, "uniques": 20}]};
         const referrersRaw = [];
+
+        const viewsTotals = {"month": 14, "year": 14, "all": 14};
+        const clonesTotals = {"month": 490, "year": 490, "all": 490};
 
         const charts = {};
 
@@ -357,12 +375,14 @@
                 charts.views.data.datasets[0].data = data.map(d => d.count);
                 charts.views.data.datasets[1].data = data.map(d => d.uniques);
                 charts.views.update();
+                document.getElementById('viewsTotal').innerHTML = viewsTotals[period] + ' <span>total views</span>';
             } else if (chartName === 'clones') {
                 const data = clonesData[period];
                 charts.clones.data.labels = data.map(d => d.date);
                 charts.clones.data.datasets[0].data = data.map(d => d.count);
                 charts.clones.data.datasets[1].data = data.map(d => d.uniques);
                 charts.clones.update();
+                document.getElementById('clonesTotal').innerHTML = clonesTotals[period] + ' <span>total clones</span>';
             } else if (chartName === 'referrers') {
                 createReferrersChart(period);
             }
