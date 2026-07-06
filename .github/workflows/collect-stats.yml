@@ -7,12 +7,6 @@ on:
 
 permissions:
   contents: write
-  pages: write
-  id-token: write
-
-concurrency:
-  group: "pages"
-  cancel-in-progress: false
 
 jobs:
   collect-and-build:
@@ -23,6 +17,9 @@ jobs:
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Fetch latest changes
+        run: git fetch origin main
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -51,18 +48,12 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add data/stats.db docs/index.html
-          git stash || true
-          git pull --rebase origin main
-          git stash pop || true
-          git add data/stats.db docs/index.html
-          git diff --cached --quiet || git commit -m "Update stats [$(date +%Y-%m-%d)]"
+          git commit -m "Update stats [$(date +%Y-%m-%d)]" || true
+          git pull origin main --no-rebase || true
           git push origin main
 
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: docs
-
       - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./docs
