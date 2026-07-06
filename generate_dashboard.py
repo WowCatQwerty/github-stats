@@ -1,9 +1,4 @@
 #!/usr/bin/env python3
-"""
-Генератор HTML-дашборда из SQLite базы.
-Создаёт интерактивную страницу с графиками в стиле vps-net-stat.
-"""
-
 import os
 import sqlite3
 import json
@@ -14,141 +9,26 @@ DB_PATH = Path(os.environ.get("DB_PATH", "data/stats.db"))
 OUTPUT_PATH = Path(os.environ.get("OUTPUT_PATH", "docs/index.html"))
 REPO = os.environ.get("REPOS", "WowCatQwerty/vps-net-stat").split(",")[0].strip()
 
-def get_db_data():
-    """Извлекает все данные из базы."""
-    if not DB_PATH.exists():
-        return {}
-
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    c = conn.cursor()
-
-    data = {}
-
-    # Repo snapshots
-    c.execute("SELECT * FROM repo_snapshots WHERE repo = ? ORDER BY date", (REPO,))
-    data["snapshots"] = [dict(r) for r in c.fetchall()]
-
-    # Traffic views
-    c.execute("SELECT * FROM traffic_views WHERE repo = ? ORDER BY date", (REPO,))
-    data["views"] = [dict(r) for r in c.fetchall()]
-
-    # Traffic clones
-    c.execute("SELECT * FROM traffic_clones WHERE repo = ? ORDER BY date", (REPO,))
-    data["clones"] = [dict(r) for r in c.fetchall()]
-
-    # Referrers (последние)
-    c.execute("""
-        SELECT referrer, SUM(count) as total_count, SUM(uniques) as total_uniques
-        FROM referrers WHERE repo = ?
-        GROUP BY referrer ORDER BY total_count DESC LIMIT 10
-    """, (REPO,))
-    data["referrers"] = [dict(r) for r in c.fetchall()]
-
-    # Popular paths (последние)
-    c.execute("""
-        SELECT path, title, SUM(count) as total_count, SUM(uniques) as total_uniques
-        FROM popular_paths WHERE repo = ?
-        GROUP BY path ORDER BY total_count DESC LIMIT 10
-    """, (REPO,))
-    data["paths"] = [dict(r) for r in c.fetchall()]
-
-    # Stargazers
-    c.execute("""
-        SELECT starred_at, COUNT(*) as count 
-        FROM stargazers WHERE repo = ?
-        GROUP BY starred_at ORDER BY starred_at
-    """, (REPO,))
-    data["stargazers"] = [dict(r) for r in c.fetchall()]
-
-    # Commits
-    c.execute("SELECT * FROM commits WHERE repo = ? ORDER BY week", (REPO,))
-    data["commits"] = [dict(r) for r in c.fetchall()]
-
-    # Issues
-    c.execute("SELECT * FROM issues WHERE repo = ? ORDER BY date", (REPO,))
-    data["issues"] = [dict(r) for r in c.fetchall()]
-
-    conn.close()
-    return data
-
-def generate_html(data):
-    """Генерирует HTML-дашборд."""
-
-    # Подготовка данных для графиков
-    views_dates = [r["date"] for r in data.get("views", [])]
-    views_total = [r["count"] for r in data.get("views", [])]
-    views_unique = [r["uniques"] for r in data.get("views", [])]
-
-    clones_dates = [r["date"] for r in data.get("clones", [])]
-    clones_total = [r["count"] for r in data.get("clones", [])]
-    clones_unique = [r["uniques"] for r in data.get("clones", [])]
-
-    # Stars over time (cumulative)
-    stars_dates = []
-    stars_cumulative = []
-    cumsum = 0
-    for r in data.get("stargazers", []):
-        stars_dates.append(r["starred_at"])
-        cumsum += r["count"]
-        stars_cumulative.append(cumsum)
-
-    # Если нет данных по stargazers, используем snapshots
-    if not stars_cumulative and data.get("snapshots"):
-        stars_dates = [r["date"] for r in data["snapshots"]]
-        stars_cumulative = [r["stars"] for r in data["snapshots"]]
-
-    # Referrers
-    ref_labels = [r["referrer"] for r in data.get("referrers", [])]
-    ref_values = [r["total_count"] for r in data.get("referrers", [])]
-
-    # Popular paths
-    path_labels = [r["path"] for r in data.get("paths", [])]
-    path_values = [r["total_count"] for r in data.get("paths", [])]
-
-    # Commits
-    commit_weeks = [r["week"] for r in data.get("commits", [])]
-    commit_additions = [r["additions"] for r in data.get("commits", [])]
-    commit_deletions = [r["deletions"] for r in data.get("commits", [])]
-
-    # Issues
-    issues_dates = [r["date"] for r in data.get("issues", [])]
-    issues_open = [r["open_count"] for r in data.get("issues", [])]
-    issues_closed = [r["closed_count"] for r in data.get("issues", [])]
-
-    # Последние значения
-    latest = data.get("snapshots", [{}])[-1] if data.get("snapshots") else {}
-    total_stars = latest.get("stars", 0)
-    total_forks = latest.get("forks", 0)
-    total_views = sum(views_total) if views_total else 0
-    total_clones = sum(clones_total) if clones_total else 0
-
-    html = f"""<!DOCTYPE html>
+HTML_TEMPLATE = """<!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{REPO} — Stats Dashboard</title>
+    <title>{repo} — Stats</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <style>
         :root {{
             --bg: #0d1117;
             --bg-card: #161b22;
-            --bg-card-hover: #1c2128;
             --border: #30363d;
             --text: #c9d1d9;
             --text-muted: #8b949e;
             --accent: #58a6ff;
             --accent-green: #3fb950;
-            --accent-orange: #f0883e;
-            --accent-red: #f85149;
-            --accent-purple: #a371f7;
             --font-mono: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
             --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         }}
-
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-
         body {{
             background: var(--bg);
             color: var(--text);
@@ -156,558 +36,431 @@ def generate_html(data):
             line-height: 1.6;
             min-height: 100vh;
         }}
-
         .container {{
             max-width: 1200px;
             margin: 0 auto;
             padding: 40px 20px;
         }}
-
         header {{
             text-align: center;
             margin-bottom: 40px;
             padding-bottom: 30px;
             border-bottom: 1px solid var(--border);
         }}
-
         header h1 {{
             font-family: var(--font-mono);
-            font-size: 2rem;
-            color: var(--accent);
+            font-size: 1.8rem;
+            color: var(--text);
             margin-bottom: 8px;
         }}
-
-        header h1::before {{
-            content: "📊 ";
-        }}
-
-        header .subtitle {{
-            color: var(--text-muted);
-            font-size: 0.95rem;
-        }}
-
         header .repo-link {{
-            display: inline-block;
-            margin-top: 12px;
             color: var(--accent);
             text-decoration: none;
             font-family: var(--font-mono);
-            font-size: 0.9rem;
-            padding: 6px 14px;
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            transition: all 0.2s;
+            font-size: 0.85rem;
         }}
-
-        header .repo-link:hover {{
-            background: var(--bg-card);
-            border-color: var(--accent);
-        }}
-
-        .stats-grid {{
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 16px;
-            margin-bottom: 30px;
-        }}
-
-        .stat-card {{
+        .stars-block {{
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 30px;
             background: var(--bg-card);
             border: 1px solid var(--border);
             border-radius: 12px;
-            padding: 20px;
-            transition: transform 0.2s, border-color 0.2s;
         }}
-
-        .stat-card:hover {{
-            transform: translateY(-2px);
-            border-color: var(--accent);
-        }}
-
-        .stat-card .label {{
-            color: var(--text-muted);
-            font-size: 0.8rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 8px;
-        }}
-
-        .stat-card .value {{
+        .stars-block .stars-value {{
             font-family: var(--font-mono);
-            font-size: 1.8rem;
-            font-weight: 600;
+            font-size: 4rem;
+            font-weight: 700;
+            color: var(--accent);
         }}
-
-        .stat-card.stars .value {{ color: var(--accent); }}
-        .stat-card.forks .value {{ color: var(--accent-green); }}
-        .stat-card.views .value {{ color: var(--accent-orange); }}
-        .stat-card.clones .value {{ color: var(--accent-purple); }}
-
+        .stars-block .stars-label {{
+            color: var(--text-muted);
+            font-size: 1rem;
+            margin-top: 8px;
+        }}
+        .stars-block .forks-value {{
+            font-family: var(--font-mono);
+            font-size: 1.2rem;
+            color: var(--accent-green);
+            margin-top: 12px;
+        }}
         .chart-card {{
             background: var(--bg-card);
             border: 1px solid var(--border);
             border-radius: 12px;
             padding: 24px;
-            margin-bottom: 20px;
+            margin-bottom: 24px;
         }}
-
-        .chart-card h2 {{
-            font-family: var(--font-mono);
-            font-size: 1.1rem;
-            margin-bottom: 4px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }}
-
-        .chart-card .desc {{
-            color: var(--text-muted);
-            font-size: 0.85rem;
-            margin-bottom: 20px;
-        }}
-
-        .chart-wrapper {{
-            position: relative;
-            height: 300px;
-        }}
-
-        .chart-wrapper.small {{
-            height: 250px;
-        }}
-
-        .two-col {{
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
-            gap: 20px;
-        }}
-
-        .referrer-list, .path-list {{
-            list-style: none;
-        }}
-
-        .referrer-list li, .path-list li {{
+        .chart-header {{
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 10px 0;
-            border-bottom: 1px solid var(--border);
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }}
+        .chart-header h2 {{
             font-family: var(--font-mono);
-            font-size: 0.9rem;
+            font-size: 1rem;
+            color: var(--text);
         }}
-
-        .referrer-list li:last-child, .path-list li:last-child {{
-            border-bottom: none;
+        .period-tabs {{
+            display: flex;
+            gap: 4px;
+            background: var(--bg);
+            padding: 4px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
         }}
-
-        .referrer-list .name, .path-list .name {{
-            color: var(--accent);
-        }}
-
-        .referrer-list .count, .path-list .count {{
+        .period-tabs button {{
+            background: transparent;
+            border: none;
             color: var(--text-muted);
-            font-size: 0.85rem;
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            padding: 6px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
         }}
-
-        .empty-state {{
-            text-align: center;
-            padding: 60px 20px;
-            color: var(--text-muted);
+        .period-tabs button:hover {{
+            color: var(--text);
         }}
-
-        .empty-state .icon {{
-            font-size: 3rem;
-            margin-bottom: 16px;
-            opacity: 0.5;
+        .period-tabs button.active {{
+            background: var(--border);
+            color: var(--text);
         }}
-
+        .chart-wrapper {{
+            position: relative;
+            height: 280px;
+        }}
+        .referrer-chart-wrapper {{
+            position: relative;
+            height: 320px;
+        }}
         footer {{
             text-align: center;
             padding: 30px;
             color: var(--text-muted);
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             border-top: 1px solid var(--border);
             margin-top: 20px;
-        }}
-
-        footer .update-time {{
             font-family: var(--font-mono);
         }}
-
         @media (max-width: 600px) {{
-            .two-col {{ grid-template-columns: 1fr; }}
-            .stats-grid {{ grid-template-columns: repeat(2, 1fr); }}
-            header h1 {{ font-size: 1.4rem; }}
+            .stars-block .stars-value {{ font-size: 2.5rem; }}
+            .chart-header {{ flex-direction: column; align-items: flex-start; }}
         }}
     </style>
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>{REPO}</h1>
-            <p class="subtitle">Статистика репозитория за всё время</p>
-            <a href="https://github.com/{REPO}" class="repo-link" target="_blank">
-                github.com/{REPO} ↗
-            </a>
+            <h1>{repo}</h1>
+            <a href="https://github.com/{repo}" class="repo-link" target="_blank">github.com/{repo}</a>
         </header>
 
-        <div class="stats-grid">
-            <div class="stat-card stars">
-                <div class="label">⭐ Stars</div>
-                <div class="value">{total_stars:,}</div>
-            </div>
-            <div class="stat-card forks">
-                <div class="label">🍴 Forks</div>
-                <div class="value">{total_forks:,}</div>
-            </div>
-            <div class="stat-card views">
-                <div class="label">👁 Views (14d)</div>
-                <div class="value">{total_views:,}</div>
-            </div>
-            <div class="stat-card clones">
-                <div class="label">📥 Clones (14d)</div>
-                <div class="value">{total_clones:,}</div>
-            </div>
+        <div class="stars-block">
+            <div class="stars-value">⭐ {stars}</div>
+            <div class="stars-label">stars total</div>
+            <div class="forks-value">🍴 {forks} forks</div>
         </div>
-"""
 
-    # Stars Over Time
-    if stars_cumulative:
-        html += f"""
         <div class="chart-card">
-            <h2>⭐ Stars Over Time</h2>
-            <p class="desc">Накопительный рост звёздочек</p>
+            <div class="chart-header">
+                <h2>👁 Views</h2>
+                <div class="period-tabs" data-chart="views">
+                    <button class="active" onclick="switchPeriod('views', 'month')">Month</button>
+                    <button onclick="switchPeriod('views', 'year')">Year</button>
+                    <button onclick="switchPeriod('views', 'all')">All</button>
+                </div>
+            </div>
             <div class="chart-wrapper">
-                <canvas id="starsChart"></canvas>
+                <canvas id="viewsChart"></canvas>
             </div>
         </div>
-"""
 
-    # Views + Clones
-    if views_dates or clones_dates:
-        html += """
-        <div class="two-col">
-"""
-        if views_dates:
-            html += """
-            <div class="chart-card">
-                <h2>👁 Repo Views</h2>
-                <p class="desc">Просмотры страницы репозитория</p>
-                <div class="chart-wrapper small">
-                    <canvas id="viewsChart"></canvas>
+        <div class="chart-card">
+            <div class="chart-header">
+                <h2>📥 Clones</h2>
+                <div class="period-tabs" data-chart="clones">
+                    <button class="active" onclick="switchPeriod('clones', 'month')">Month</button>
+                    <button onclick="switchPeriod('clones', 'year')">Year</button>
+                    <button onclick="switchPeriod('clones', 'all')">All</button>
                 </div>
             </div>
-"""
-        if clones_dates:
-            html += """
-            <div class="chart-card">
-                <h2>📥 Repo Clones</h2>
-                <p class="desc">Клонирования репозитория</p>
-                <div class="chart-wrapper small">
-                    <canvas id="clonesChart"></canvas>
-                </div>
+            <div class="chart-wrapper">
+                <canvas id="clonesChart"></canvas>
             </div>
-"""
-        html += """
         </div>
-"""
 
-    # Referrers + Popular Paths
-    if ref_labels or path_labels:
-        html += """
-        <div class="two-col">
-"""
-        if ref_labels:
-            html += """
-            <div class="chart-card">
+        <div class="chart-card">
+            <div class="chart-header">
                 <h2>🔗 Referring Sites</h2>
-                <p class="desc">Источники трафика</p>
-                <ul class="referrer-list">
-"""
-            for ref in data.get("referrers", []):
-                html += f"""
-                    <li>
-                        <span class="name">{ref["referrer"]}</span>
-                        <span class="count">{ref["total_count"]:,} views · {ref["total_uniques"]:,} unique</span>
-                    </li>
-"""
-            html += """
-                </ul>
+                <div class="period-tabs" data-chart="referrers">
+                    <button class="active" onclick="switchPeriod('referrers', 'month')">Month</button>
+                    <button onclick="switchPeriod('referrers', 'year')">Year</button>
+                    <button onclick="switchPeriod('referrers', 'all')">All</button>
+                </div>
             </div>
-"""
-        if path_labels:
-            html += """
-            <div class="chart-card">
-                <h2>📄 Popular Content</h2>
-                <p class="desc">Самые посещаемые страницы</p>
-                <ul class="path-list">
-"""
-            for path in data.get("paths", []):
-                display_path = path["path"][:40] + "..." if len(path["path"]) > 40 else path["path"]
-                html += f"""
-                    <li>
-                        <span class="name">{display_path}</span>
-                        <span class="count">{path["total_count"]:,} views</span>
-                    </li>
-"""
-            html += """
-                </ul>
-            </div>
-"""
-        html += """
-        </div>
-"""
-
-    # Commits
-    if commit_weeks:
-        html += """
-        <div class="chart-card">
-            <h2>💻 Code Activity</h2>
-            <p class="desc">Добавления и удаления строк кода по неделям</p>
-            <div class="chart-wrapper">
-                <canvas id="commitsChart"></canvas>
+            <div class="referrer-chart-wrapper">
+                <canvas id="referrersChart"></canvas>
             </div>
         </div>
-"""
 
-    # Issues
-    if issues_dates:
-        html += """
-        <div class="chart-card">
-            <h2>🐛 Issues</h2>
-            <p class="desc">Открытые и закрытые issues</p>
-            <div class="chart-wrapper small">
-                <canvas id="issuesChart"></canvas>
-            </div>
-        </div>
-"""
-
-    # Если совсем нет данных
-    if not any([stars_cumulative, views_dates, clones_dates, ref_labels, path_labels, commit_weeks, issues_dates]):
-        html += """
-        <div class="empty-state">
-            <div class="icon">📭</div>
-            <p>Пока нет данных. Запустите сбор статистики — данные появятся здесь.</p>
-        </div>
-"""
-
-    html += f"""
         <footer>
-            <p>Автоматически обновляется раз в 14 дней</p>
-            <p class="update-time">Последнее обновление: {datetime.now().strftime("%Y-%m-%d %H:%M")}</p>
+            Updated: {update_time} · Auto-collect every 7 days
         </footer>
     </div>
 
     <script>
         Chart.defaults.color = '#8b949e';
-        Chart.defaults.borderColor = '#30363d';
+        Chart.defaults.borderColor = '#21262d';
         Chart.defaults.font.family = "'SF Mono', Monaco, monospace";
 
-        const commonOptions = {{
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: {{
-                mode: 'index',
-                intersect: false,
-            }},
-            plugins: {{
-                legend: {{
-                    labels: {{ color: '#c9d1d9' }}
-                }}
-            }},
-            scales: {{
-                x: {{
-                    grid: {{ color: '#21262d' }},
-                    ticks: {{ color: '#8b949e', maxRotation: 45 }}
+        const viewsData = {views_json};
+        const clonesData = {clones_json};
+        const referrersRaw = {referrers_json};
+
+        const charts = {{}};
+
+        function createLineChart(canvasId, data, label, color) {{
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            return new Chart(ctx, {{
+                type: 'line',
+                data: {{
+                    labels: data.map(d => d.date),
+                    datasets: [
+                        {{
+                            label: 'Total',
+                            data: data.map(d => d.count),
+                            borderColor: color,
+                            backgroundColor: color + '15',
+                            fill: true,
+                            tension: 0.3,
+                            pointRadius: 2,
+                            pointHoverRadius: 5,
+                            borderWidth: 2
+                        }},
+                        {{
+                            label: 'Unique',
+                            data: data.map(d => d.uniques),
+                            borderColor: '#8b949e',
+                            backgroundColor: 'transparent',
+                            fill: false,
+                            tension: 0.3,
+                            pointRadius: 2,
+                            pointHoverRadius: 5,
+                            borderWidth: 1.5,
+                            borderDash: [5, 5]
+                        }}
+                    ]
                 }},
-                y: {{
-                    grid: {{ color: '#21262d' }},
-                    ticks: {{ color: '#8b949e' }}
+                options: {{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {{ mode: 'index', intersect: false }},
+                    plugins: {{
+                        legend: {{
+                            labels: {{ color: '#c9d1d9', usePointStyle: true, boxWidth: 8 }}
+                        }}
+                    }},
+                    scales: {{
+                        x: {{
+                            grid: {{ color: '#21262d' }},
+                            ticks: {{ color: '#8b949e', maxRotation: 45, maxTicksLimit: 8 }}
+                        }},
+                        y: {{
+                            grid: {{ color: '#21262d' }},
+                            ticks: {{ color: '#8b949e' }},
+                            beginAtZero: true
+                        }}
+                    }}
                 }}
-            }}
-        }};
-"""
+            }});
+        }}
 
-    # Stars chart
-    if stars_cumulative:
-        html += f"""
-        new Chart(document.getElementById('starsChart'), {{
-            type: 'line',
-            data: {{
-                labels: {json.dumps(stars_dates)},
-                datasets: [{{
-                    label: 'Stars (cumulative)',
-                    data: {json.dumps(stars_cumulative)},
-                    borderColor: '#58a6ff',
-                    backgroundColor: 'rgba(88, 166, 255, 0.1)',
-                    fill: true,
-                    tension: 0.3,
-                    pointRadius: 2,
-                    pointHoverRadius: 6
-                }}]
-            }},
-            options: {{
-                ...commonOptions,
-                plugins: {{
-                    legend: {{ display: false }}
-                }}
-            }}
-        }});
-"""
+        function aggregateReferrers(period) {{
+            const today = new Date();
+            let cutoff = new Date(0);
+            if (period === 'month') cutoff = new Date(today - 30 * 86400000);
+            if (period === 'year') cutoff = new Date(today - 365 * 86400000);
 
-    # Views chart
-    if views_dates:
-        html += f"""
-        new Chart(document.getElementById('viewsChart'), {{
-            type: 'line',
-            data: {{
-                labels: {json.dumps(views_dates)},
-                datasets: [
-                    {{
-                        label: 'Unique',
-                        data: {json.dumps(views_unique)},
+            const filtered = referrersRaw.filter(r => new Date(r.date) >= cutoff);
+            const grouped = {{}};
+            filtered.forEach(r => {{
+                if (!grouped[r.referrer]) grouped[r.referrer] = {{ count: 0, uniques: 0 }};
+                grouped[r.referrer].count += r.count;
+                grouped[r.referrer].uniques += r.uniques;
+            }});
+
+            const sorted = Object.entries(grouped)
+                .map(([name, vals]) => ({{ name, ...vals }}))
+                .sort((a, b) => b.count - a.count)
+                .slice(0, 8);
+
+            return sorted;
+        }}
+
+        function createReferrersChart(period) {{
+            const data = aggregateReferrers(period);
+            const colors = ['#58a6ff', '#3fb950', '#a371f7', '#f0883e', '#f85149', '#79c0ff', '#56d364', '#d2a8ff'];
+
+            const ctx = document.getElementById('referrersChart').getContext('2d');
+
+            if (charts.referrers) charts.referrers.destroy();
+
+            charts.referrers = new Chart(ctx, {{
+                type: 'line',
+                data: {{
+                    labels: data.map(d => d.name),
+                    datasets: [{{
+                        label: 'Views',
+                        data: data.map(d => d.count),
                         borderColor: '#58a6ff',
-                        backgroundColor: 'rgba(88, 166, 255, 0.1)',
+                        backgroundColor: 'rgba(88, 166, 255, 0.08)',
                         fill: true,
-                        tension: 0.3,
-                        pointRadius: 2
+                        tension: 0.4,
+                        pointRadius: 4,
+                        pointHoverRadius: 8,
+                        pointBackgroundColor: colors,
+                        pointBorderColor: colors,
+                        borderWidth: 2.5
+                    }}]
+                }},
+                options: {{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {{
+                        legend: {{ display: false }},
+                        tooltip: {{
+                            callbacks: {{
+                                label: function(ctx) {{
+                                    const d = data[ctx.dataIndex];
+                                    return d.count + ' views · ' + d.uniques + ' unique';
+                                }}
+                            }}
+                        }}
                     }},
-                    {{
-                        label: 'Total',
-                        data: {json.dumps(views_total)},
-                        borderColor: '#3fb950',
-                        backgroundColor: 'rgba(63, 185, 80, 0.05)',
-                        fill: true,
-                        tension: 0.3,
-                        pointRadius: 2
-                    }}
-                ]
-            }},
-            options: commonOptions
-        }});
-"""
-
-    # Clones chart
-    if clones_dates:
-        html += f"""
-        new Chart(document.getElementById('clonesChart'), {{
-            type: 'line',
-            data: {{
-                labels: {json.dumps(clones_dates)},
-                datasets: [
-                    {{
-                        label: 'Unique',
-                        data: {json.dumps(clones_unique)},
-                        borderColor: '#58a6ff',
-                        backgroundColor: 'rgba(88, 166, 255, 0.1)',
-                        fill: true,
-                        tension: 0.3,
-                        pointRadius: 2
-                    }},
-                    {{
-                        label: 'Total',
-                        data: {json.dumps(clones_total)},
-                        borderColor: '#a371f7',
-                        backgroundColor: 'rgba(163, 113, 247, 0.05)',
-                        fill: true,
-                        tension: 0.3,
-                        pointRadius: 2
-                    }}
-                ]
-            }},
-            options: commonOptions
-        }});
-"""
-
-    # Commits chart
-    if commit_weeks:
-        html += f"""
-        new Chart(document.getElementById('commitsChart'), {{
-            type: 'bar',
-            data: {{
-                labels: {json.dumps(commit_weeks)},
-                datasets: [
-                    {{
-                        label: 'Additions',
-                        data: {json.dumps(commit_additions)},
-                        backgroundColor: '#3fb950',
-                        borderRadius: 3
-                    }},
-                    {{
-                        label: 'Deletions',
-                        data: {json.dumps([-(d) for d in commit_deletions])},
-                        backgroundColor: '#f85149',
-                        borderRadius: 3
-                    }}
-                ]
-            }},
-            options: {{
-                ...commonOptions,
-                scales: {{
-                    x: {{
-                        stacked: true,
-                        grid: {{ color: '#21262d' }},
-                        ticks: {{ color: '#8b949e', maxRotation: 45 }}
-                    }},
-                    y: {{
-                        stacked: true,
-                        grid: {{ color: '#21262d' }},
-                        ticks: {{ color: '#8b949e' }}
+                    scales: {{
+                        x: {{
+                            grid: {{ display: false }},
+                            ticks: {{ color: '#c9d1d9', font: {{ size: 11 }} }}
+                        }},
+                        y: {{
+                            grid: {{ color: '#21262d' }},
+                            ticks: {{ color: '#8b949e' }},
+                            beginAtZero: true
+                        }}
                     }}
                 }}
+            }});
+        }}
+
+        function switchPeriod(chartName, period) {{
+            document.querySelectorAll('.period-tabs[data-chart="' + chartName + '"] button').forEach(btn => {{
+                btn.classList.toggle('active', btn.textContent.toLowerCase().includes(period === 'all' ? 'all' : period === 'month' ? 'month' : 'year'));
+            }});
+
+            if (chartName === 'views') {{
+                const data = viewsData[period];
+                charts.views.data.labels = data.map(d => d.date);
+                charts.views.data.datasets[0].data = data.map(d => d.count);
+                charts.views.data.datasets[1].data = data.map(d => d.uniques);
+                charts.views.update();
+            }} else if (chartName === 'clones') {{
+                const data = clonesData[period];
+                charts.clones.data.labels = data.map(d => d.date);
+                charts.clones.data.datasets[0].data = data.map(d => d.count);
+                charts.clones.data.datasets[1].data = data.map(d => d.uniques);
+                charts.clones.update();
+            }} else if (chartName === 'referrers') {{
+                createReferrersChart(period);
             }}
-        }});
-"""
+        }}
 
-    # Issues chart
-    if issues_dates:
-        html += f"""
-        new Chart(document.getElementById('issuesChart'), {{
-            type: 'line',
-            data: {{
-                labels: {json.dumps(issues_dates)},
-                datasets: [
-                    {{
-                        label: 'Open',
-                        data: {json.dumps(issues_open)},
-                        borderColor: '#f0883e',
-                        backgroundColor: 'rgba(240, 136, 62, 0.1)',
-                        fill: true,
-                        tension: 0.3,
-                        pointRadius: 3
-                    }},
-                    {{
-                        label: 'Closed',
-                        data: {json.dumps(issues_closed)},
-                        borderColor: '#3fb950',
-                        backgroundColor: 'rgba(63, 185, 80, 0.1)',
-                        fill: true,
-                        tension: 0.3,
-                        pointRadius: 3
-                    }}
-                ]
-            }},
-            options: commonOptions
-        }});
-"""
-
-    html += """
+        charts.views = createLineChart('viewsChart', viewsData.month, 'Views', '#58a6ff');
+        charts.clones = createLineChart('clonesChart', clonesData.month, 'Clones', '#3fb950');
+        createReferrersChart('month');
     </script>
 </body>
 </html>
 """
 
-    return html
+def get_db_data():
+    if not DB_PATH.exists():
+        return {}
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    c = conn.cursor()
+    data = {}
+    c.execute("SELECT * FROM traffic_views WHERE repo = ? ORDER BY date", (REPO,))
+    data["views"] = [dict(r) for r in c.fetchall()]
+    c.execute("SELECT * FROM traffic_clones WHERE repo = ? ORDER BY date", (REPO,))
+    data["clones"] = [dict(r) for r in c.fetchall()]
+    c.execute("SELECT * FROM referrers WHERE repo = ? ORDER BY date", (REPO,))
+    data["referrers"] = [dict(r) for r in c.fetchall()]
+    c.execute("SELECT stars, forks FROM repo_info WHERE repo = ? ORDER BY date DESC LIMIT 1", (REPO,))
+    row = c.fetchone()
+    data["stars"] = row["stars"] if row else 0
+    data["forks"] = row["forks"] if row else 0
+    conn.close()
+    return data
+
+def filter_by_period(rows, period):
+    if not rows:
+        return rows
+    today = datetime.now()
+    if period == "month":
+        cutoff = today - timedelta(days=30)
+    elif period == "year":
+        cutoff = today - timedelta(days=365)
+    else:
+        return rows
+    return [r for r in rows if datetime.strptime(r["date"], "%Y-%m-%d") >= cutoff]
 
 def main():
-    print("📊 Генерирую дашборд...")
+    print("Generating dashboard...")
     data = get_db_data()
-    html = generate_html(data)
+
+    views_month = filter_by_period(data.get("views", []), "month")
+    views_year = filter_by_period(data.get("views", []), "year")
+    views_all = data.get("views", [])
+
+    clones_month = filter_by_period(data.get("clones", []), "month")
+    clones_year = filter_by_period(data.get("clones", []), "year")
+    clones_all = data.get("clones", [])
+
+    referrers_raw = data.get("referrers", [])
+
+    views_json = json.dumps({
+        "month": [{"date": r["date"], "count": r["count"], "uniques": r["uniques"]} for r in views_month],
+        "year": [{"date": r["date"], "count": r["count"], "uniques": r["uniques"]} for r in views_year],
+        "all": [{"date": r["date"], "count": r["count"], "uniques": r["uniques"]} for r in views_all]
+    })
+
+    clones_json = json.dumps({
+        "month": [{"date": r["date"], "count": r["count"], "uniques": r["uniques"]} for r in clones_month],
+        "year": [{"date": r["date"], "count": r["count"], "uniques": r["uniques"]} for r in clones_year],
+        "all": [{"date": r["date"], "count": r["count"], "uniques": r["uniques"]} for r in clones_all]
+    })
+
+    referrers_json = json.dumps(referrers_raw)
+
+    html = HTML_TEMPLATE.format(
+        repo=REPO,
+        stars=data.get("stars", 0),
+        forks=data.get("forks", 0),
+        update_time=datetime.now().strftime("%Y-%m-%d %H:%M"),
+        views_json=views_json,
+        clones_json=clones_json,
+        referrers_json=referrers_json
+    )
 
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
         f.write(html)
-
-    print(f"✓ Дашборд сохранён: {OUTPUT_PATH}")
+    print(f"Saved: {OUTPUT_PATH}")
 
 if __name__ == "__main__":
     main()
