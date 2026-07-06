@@ -188,7 +188,10 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                     <button onclick="switchPeriod('views', 'all')">All</button>
                 </div>
             </div>
-            <div class="chart-total" id="viewsTotal">{views_total_month} <span>total views</span></div>
+            <div class="chart-total" id="viewsTotal">
+                <span id="viewsTotalCount">{views_total_month}</span> total · 
+                <span id="viewsUniqueCount" style="color: var(--text-muted)">{views_unique_month}</span> unique
+            </div>
             <div class="chart-wrapper">
                 <canvas id="viewsChart"></canvas>
             </div>
@@ -203,7 +206,10 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                     <button onclick="switchPeriod('clones', 'all')">All</button>
                 </div>
             </div>
-            <div class="chart-total clones-total" id="clonesTotal">{clones_total_month} <span>total clones</span></div>
+            <div class="chart-total clones-total" id="clonesTotal">
+                <span id="clonesTotalCount">{clones_total_month}</span> total · 
+                <span id="clonesUniqueCount" style="color: var(--text-muted)">{clones_unique_month}</span> unique
+            </div>
             <div class="chart-wrapper">
                 <canvas id="clonesChart"></canvas>
             </div>
@@ -442,6 +448,9 @@ def filter_by_period(rows, period):
 def calc_total(rows):
     return sum(r["count"] for r in rows)
 
+def calc_unique(rows):
+    return sum(r["uniques"] for r in rows)
+
 def main():
     print("Generating dashboard...")
     data = get_db_data()
@@ -491,7 +500,9 @@ def main():
         clones_json=clones_json,
         referrers_json=referrers_json,
         views_total_month=calc_total(views_month),
+        views_unique_month=calc_unique(views_month),
         clones_total_month=calc_total(clones_month),
+        clones_unique_month=calc_unique(clones_month),
         views_totals_json=views_totals_json,
         clones_totals_json=clones_totals_json
     )
