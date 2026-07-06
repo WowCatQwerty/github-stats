@@ -95,7 +95,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
+            margin-bottom: 12px;
             flex-wrap: wrap;
             gap: 12px;
         }}
@@ -103,6 +103,19 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             font-family: var(--font-mono);
             font-size: 1rem;
             color: var(--text);
+        }}
+        .chart-total {{
+            font-family: var(--font-mono);
+            font-size: 1.5rem;
+            color: var(--accent);
+            margin-bottom: 16px;
+        }}
+        .chart-total.clones-total {{
+            color: var(--accent-green);
+        }}
+        .chart-total span {{
+            font-size: 0.85rem;
+            color: var(--text-muted);
         }}
         .period-tabs {{
             display: flex;
@@ -175,6 +188,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                     <button onclick="switchPeriod('views', 'all')">All</button>
                 </div>
             </div>
+            <div class="chart-total" id="viewsTotal">{views_total_month} <span>total views</span></div>
             <div class="chart-wrapper">
                 <canvas id="viewsChart"></canvas>
             </div>
@@ -189,6 +203,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                     <button onclick="switchPeriod('clones', 'all')">All</button>
                 </div>
             </div>
+            <div class="chart-total clones-total" id="clonesTotal">{clones_total_month} <span>total clones</span></div>
             <div class="chart-wrapper">
                 <canvas id="clonesChart"></canvas>
             </div>
@@ -221,6 +236,9 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         const viewsData = {views_json};
         const clonesData = {clones_json};
         const referrersRaw = {referrers_json};
+
+        const viewsTotals = {views_totals_json};
+        const clonesTotals = {clones_totals_json};
 
         const charts = {{}};
 
@@ -368,12 +386,14 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                 charts.views.data.datasets[0].data = data.map(d => d.count);
                 charts.views.data.datasets[1].data = data.map(d => d.uniques);
                 charts.views.update();
+                document.getElementById('viewsTotal').innerHTML = viewsTotals[period] + ' <span>total views</span>';
             }} else if (chartName === 'clones') {{
                 const data = clonesData[period];
                 charts.clones.data.labels = data.map(d => d.date);
                 charts.clones.data.datasets[0].data = data.map(d => d.count);
                 charts.clones.data.datasets[1].data = data.map(d => d.uniques);
                 charts.clones.update();
+                document.getElementById('clonesTotal').innerHTML = clonesTotals[period] + ' <span>total clones</span>';
             }} else if (chartName === 'referrers') {{
                 createReferrersChart(period);
             }}
@@ -419,6 +439,9 @@ def filter_by_period(rows, period):
         return rows
     return [r for r in rows if datetime.strptime(r["date"], "%Y-%m-%d") >= cutoff]
 
+def calc_total(rows):
+    return sum(r["count"] for r in rows)
+
 def main():
     print("Generating dashboard...")
     data = get_db_data()
@@ -445,6 +468,18 @@ def main():
         "all": [{"date": r["date"], "count": r["count"], "uniques": r["uniques"]} for r in clones_all]
     })
 
+    views_totals_json = json.dumps({
+        "month": calc_total(views_month),
+        "year": calc_total(views_year),
+        "all": calc_total(views_all)
+    })
+
+    clones_totals_json = json.dumps({
+        "month": calc_total(clones_month),
+        "year": calc_total(clones_year),
+        "all": calc_total(clones_all)
+    })
+
     referrers_json = json.dumps(referrers_raw)
 
     html = HTML_TEMPLATE.format(
@@ -454,7 +489,11 @@ def main():
         update_time=datetime.now().strftime("%Y-%m-%d %H:%M"),
         views_json=views_json,
         clones_json=clones_json,
-        referrers_json=referrers_json
+        referrers_json=referrers_json,
+        views_total_month=calc_total(views_month),
+        clones_total_month=calc_total(clones_month),
+        views_totals_json=views_totals_json,
+        clones_totals_json=clones_totals_json
     )
 
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
