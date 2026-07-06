@@ -3,27 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WowCatQwerty/vps-net-stat — Stats Dashboard</title>
+    <title>WowCatQwerty/vps-net-stat — Stats</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <style>
         :root {
             --bg: #0d1117;
             --bg-card: #161b22;
-            --bg-card-hover: #1c2128;
             --border: #30363d;
             --text: #c9d1d9;
             --text-muted: #8b949e;
             --accent: #58a6ff;
             --accent-green: #3fb950;
-            --accent-orange: #f0883e;
-            --accent-red: #f85149;
-            --accent-purple: #a371f7;
             --font-mono: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
             --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         }
-
         * { margin: 0; padding: 0; box-sizing: border-box; }
-
         body {
             background: var(--bg);
             color: var(--text);
@@ -31,187 +25,120 @@
             line-height: 1.6;
             min-height: 100vh;
         }
-
         .container {
             max-width: 1200px;
             margin: 0 auto;
             padding: 40px 20px;
         }
-
         header {
             text-align: center;
             margin-bottom: 40px;
             padding-bottom: 30px;
             border-bottom: 1px solid var(--border);
         }
-
         header h1 {
             font-family: var(--font-mono);
-            font-size: 2rem;
-            color: var(--accent);
+            font-size: 1.8rem;
+            color: var(--text);
             margin-bottom: 8px;
         }
-
-        header h1::before {
-            content: "📊 ";
-        }
-
-        header .subtitle {
-            color: var(--text-muted);
-            font-size: 0.95rem;
-        }
-
         header .repo-link {
-            display: inline-block;
-            margin-top: 12px;
             color: var(--accent);
             text-decoration: none;
             font-family: var(--font-mono);
-            font-size: 0.9rem;
-            padding: 6px 14px;
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            transition: all 0.2s;
+            font-size: 0.85rem;
         }
-
-        header .repo-link:hover {
-            background: var(--bg-card);
-            border-color: var(--accent);
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 16px;
-            margin-bottom: 30px;
-        }
-
-        .stat-card {
+        .stars-block {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 30px;
             background: var(--bg-card);
             border: 1px solid var(--border);
             border-radius: 12px;
-            padding: 20px;
-            transition: transform 0.2s, border-color 0.2s;
         }
-
-        .stat-card:hover {
-            transform: translateY(-2px);
-            border-color: var(--accent);
-        }
-
-        .stat-card .label {
-            color: var(--text-muted);
-            font-size: 0.8rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 8px;
-        }
-
-        .stat-card .value {
+        .stars-block .stars-value {
             font-family: var(--font-mono);
-            font-size: 1.8rem;
-            font-weight: 600;
+            font-size: 4rem;
+            font-weight: 700;
+            color: var(--accent);
         }
-
-        .stat-card.stars .value { color: var(--accent); }
-        .stat-card.forks .value { color: var(--accent-green); }
-        .stat-card.views .value { color: var(--accent-orange); }
-        .stat-card.clones .value { color: var(--accent-purple); }
-
+        .stars-block .stars-label {
+            color: var(--text-muted);
+            font-size: 1rem;
+            margin-top: 8px;
+        }
+        .stars-block .forks-value {
+            font-family: var(--font-mono);
+            font-size: 1.2rem;
+            color: var(--accent-green);
+            margin-top: 12px;
+        }
         .chart-card {
             background: var(--bg-card);
             border: 1px solid var(--border);
             border-radius: 12px;
             padding: 24px;
-            margin-bottom: 20px;
+            margin-bottom: 24px;
         }
-
-        .chart-card h2 {
-            font-family: var(--font-mono);
-            font-size: 1.1rem;
-            margin-bottom: 4px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .chart-card .desc {
-            color: var(--text-muted);
-            font-size: 0.85rem;
-            margin-bottom: 20px;
-        }
-
-        .chart-wrapper {
-            position: relative;
-            height: 300px;
-        }
-
-        .chart-wrapper.small {
-            height: 250px;
-        }
-
-        .two-col {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
-            gap: 20px;
-        }
-
-        .referrer-list, .path-list {
-            list-style: none;
-        }
-
-        .referrer-list li, .path-list li {
+        .chart-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 10px 0;
-            border-bottom: 1px solid var(--border);
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .chart-header h2 {
             font-family: var(--font-mono);
-            font-size: 0.9rem;
+            font-size: 1rem;
+            color: var(--text);
         }
-
-        .referrer-list li:last-child, .path-list li:last-child {
-            border-bottom: none;
+        .period-tabs {
+            display: flex;
+            gap: 4px;
+            background: var(--bg);
+            padding: 4px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
         }
-
-        .referrer-list .name, .path-list .name {
-            color: var(--accent);
-        }
-
-        .referrer-list .count, .path-list .count {
+        .period-tabs button {
+            background: transparent;
+            border: none;
             color: var(--text-muted);
-            font-size: 0.85rem;
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            padding: 6px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
         }
-
-        .empty-state {
-            text-align: center;
-            padding: 60px 20px;
-            color: var(--text-muted);
+        .period-tabs button:hover {
+            color: var(--text);
         }
-
-        .empty-state .icon {
-            font-size: 3rem;
-            margin-bottom: 16px;
-            opacity: 0.5;
+        .period-tabs button.active {
+            background: var(--border);
+            color: var(--text);
         }
-
+        .chart-wrapper {
+            position: relative;
+            height: 280px;
+        }
+        .referrer-chart-wrapper {
+            position: relative;
+            height: 320px;
+        }
         footer {
             text-align: center;
             padding: 30px;
             color: var(--text-muted);
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             border-top: 1px solid var(--border);
             margin-top: 20px;
-        }
-
-        footer .update-time {
             font-family: var(--font-mono);
         }
-
         @media (max-width: 600px) {
-            .two-col { grid-template-columns: 1fr; }
-            .stats-grid { grid-template-columns: repeat(2, 1fr); }
-            header h1 { font-size: 1.4rem; }
+            .stars-block .stars-value { font-size: 2.5rem; }
+            .chart-header { flex-direction: column; align-items: flex-start; }
         }
     </style>
 </head>
@@ -219,253 +146,231 @@
     <div class="container">
         <header>
             <h1>WowCatQwerty/vps-net-stat</h1>
-            <p class="subtitle">Статистика репозитория за всё время</p>
-            <a href="https://github.com/WowCatQwerty/vps-net-stat" class="repo-link" target="_blank">
-                github.com/WowCatQwerty/vps-net-stat ↗
-            </a>
+            <a href="https://github.com/WowCatQwerty/vps-net-stat" class="repo-link" target="_blank">github.com/WowCatQwerty/vps-net-stat</a>
         </header>
 
-        <div class="stats-grid">
-            <div class="stat-card stars">
-                <div class="label">⭐ Stars</div>
-                <div class="value">0</div>
-            </div>
-            <div class="stat-card forks">
-                <div class="label">🍴 Forks</div>
-                <div class="value">0</div>
-            </div>
-            <div class="stat-card views">
-                <div class="label">👁 Views (14d)</div>
-                <div class="value">14</div>
-            </div>
-            <div class="stat-card clones">
-                <div class="label">📥 Clones (14d)</div>
-                <div class="value">490</div>
-            </div>
+        <div class="stars-block">
+            <div class="stars-value">⭐ 1</div>
+            <div class="stars-label">stars total</div>
+            <div class="forks-value">🍴 0 forks</div>
         </div>
 
         <div class="chart-card">
-            <h2>⭐ Stars Over Time</h2>
-            <p class="desc">Накопительный рост звёздочек</p>
-            <div class="chart-wrapper">
-                <canvas id="starsChart"></canvas>
-            </div>
-        </div>
-
-        <div class="two-col">
-
-            <div class="chart-card">
-                <h2>👁 Repo Views</h2>
-                <p class="desc">Просмотры страницы репозитория</p>
-                <div class="chart-wrapper small">
-                    <canvas id="viewsChart"></canvas>
+            <div class="chart-header">
+                <h2>👁 Views</h2>
+                <div class="period-tabs" data-chart="views">
+                    <button class="active" onclick="switchPeriod('views', 'month')">Month</button>
+                    <button onclick="switchPeriod('views', 'year')">Year</button>
+                    <button onclick="switchPeriod('views', 'all')">All</button>
                 </div>
             </div>
+            <div class="chart-wrapper">
+                <canvas id="viewsChart"></canvas>
+            </div>
+        </div>
 
-            <div class="chart-card">
-                <h2>📥 Repo Clones</h2>
-                <p class="desc">Клонирования репозитория</p>
-                <div class="chart-wrapper small">
-                    <canvas id="clonesChart"></canvas>
+        <div class="chart-card">
+            <div class="chart-header">
+                <h2>📥 Clones</h2>
+                <div class="period-tabs" data-chart="clones">
+                    <button class="active" onclick="switchPeriod('clones', 'month')">Month</button>
+                    <button onclick="switchPeriod('clones', 'year')">Year</button>
+                    <button onclick="switchPeriod('clones', 'all')">All</button>
                 </div>
             </div>
-
-        </div>
-
-        <div class="chart-card">
-            <h2>💻 Code Activity</h2>
-            <p class="desc">Добавления и удаления строк кода по неделям</p>
             <div class="chart-wrapper">
-                <canvas id="commitsChart"></canvas>
+                <canvas id="clonesChart"></canvas>
             </div>
         </div>
 
         <div class="chart-card">
-            <h2>🐛 Issues</h2>
-            <p class="desc">Открытые и закрытые issues</p>
-            <div class="chart-wrapper small">
-                <canvas id="issuesChart"></canvas>
+            <div class="chart-header">
+                <h2>🔗 Referring Sites</h2>
+                <div class="period-tabs" data-chart="referrers">
+                    <button class="active" onclick="switchPeriod('referrers', 'month')">Month</button>
+                    <button onclick="switchPeriod('referrers', 'year')">Year</button>
+                    <button onclick="switchPeriod('referrers', 'all')">All</button>
+                </div>
+            </div>
+            <div class="referrer-chart-wrapper">
+                <canvas id="referrersChart"></canvas>
             </div>
         </div>
 
         <footer>
-            <p>Автоматически обновляется раз в 14 дней</p>
-            <p class="update-time">Последнее обновление: 2026-07-06 10:13</p>
+            Updated: 2026-07-06 10:27 · Auto-collect every 7 days
         </footer>
     </div>
 
     <script>
         Chart.defaults.color = '#8b949e';
-        Chart.defaults.borderColor = '#30363d';
+        Chart.defaults.borderColor = '#21262d';
         Chart.defaults.font.family = "'SF Mono', Monaco, monospace";
 
-        const commonOptions = {
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: {
-                mode: 'index',
-                intersect: false,
-            },
-            plugins: {
-                legend: {
-                    labels: { color: '#c9d1d9' }
-                }
-            },
-            scales: {
-                x: {
-                    grid: { color: '#21262d' },
-                    ticks: { color: '#8b949e', maxRotation: 45 }
+        const viewsData = {"month": [{"date": "2026-06-21", "count": 0, "uniques": 0}, {"date": "2026-06-22", "count": 0, "uniques": 0}, {"date": "2026-06-23", "count": 0, "uniques": 0}, {"date": "2026-06-24", "count": 0, "uniques": 0}, {"date": "2026-06-25", "count": 1, "uniques": 1}, {"date": "2026-06-26", "count": 0, "uniques": 0}, {"date": "2026-06-27", "count": 0, "uniques": 0}, {"date": "2026-06-28", "count": 0, "uniques": 0}, {"date": "2026-06-29", "count": 0, "uniques": 0}, {"date": "2026-06-30", "count": 1, "uniques": 1}, {"date": "2026-07-01", "count": 0, "uniques": 0}, {"date": "2026-07-02", "count": 0, "uniques": 0}, {"date": "2026-07-03", "count": 0, "uniques": 0}, {"date": "2026-07-04", "count": 12, "uniques": 1}, {"date": "2026-07-05", "count": 0, "uniques": 0}], "year": [{"date": "2026-06-21", "count": 0, "uniques": 0}, {"date": "2026-06-22", "count": 0, "uniques": 0}, {"date": "2026-06-23", "count": 0, "uniques": 0}, {"date": "2026-06-24", "count": 0, "uniques": 0}, {"date": "2026-06-25", "count": 1, "uniques": 1}, {"date": "2026-06-26", "count": 0, "uniques": 0}, {"date": "2026-06-27", "count": 0, "uniques": 0}, {"date": "2026-06-28", "count": 0, "uniques": 0}, {"date": "2026-06-29", "count": 0, "uniques": 0}, {"date": "2026-06-30", "count": 1, "uniques": 1}, {"date": "2026-07-01", "count": 0, "uniques": 0}, {"date": "2026-07-02", "count": 0, "uniques": 0}, {"date": "2026-07-03", "count": 0, "uniques": 0}, {"date": "2026-07-04", "count": 12, "uniques": 1}, {"date": "2026-07-05", "count": 0, "uniques": 0}], "all": [{"date": "2026-06-21", "count": 0, "uniques": 0}, {"date": "2026-06-22", "count": 0, "uniques": 0}, {"date": "2026-06-23", "count": 0, "uniques": 0}, {"date": "2026-06-24", "count": 0, "uniques": 0}, {"date": "2026-06-25", "count": 1, "uniques": 1}, {"date": "2026-06-26", "count": 0, "uniques": 0}, {"date": "2026-06-27", "count": 0, "uniques": 0}, {"date": "2026-06-28", "count": 0, "uniques": 0}, {"date": "2026-06-29", "count": 0, "uniques": 0}, {"date": "2026-06-30", "count": 1, "uniques": 1}, {"date": "2026-07-01", "count": 0, "uniques": 0}, {"date": "2026-07-02", "count": 0, "uniques": 0}, {"date": "2026-07-03", "count": 0, "uniques": 0}, {"date": "2026-07-04", "count": 12, "uniques": 1}, {"date": "2026-07-05", "count": 0, "uniques": 0}]};
+        const clonesData = {"month": [{"date": "2026-06-21", "count": 0, "uniques": 0}, {"date": "2026-06-22", "count": 0, "uniques": 0}, {"date": "2026-06-23", "count": 0, "uniques": 0}, {"date": "2026-06-24", "count": 0, "uniques": 0}, {"date": "2026-06-25", "count": 10, "uniques": 9}, {"date": "2026-06-26", "count": 35, "uniques": 22}, {"date": "2026-06-27", "count": 118, "uniques": 50}, {"date": "2026-06-28", "count": 7, "uniques": 4}, {"date": "2026-06-29", "count": 80, "uniques": 39}, {"date": "2026-06-30", "count": 40, "uniques": 22}, {"date": "2026-07-01", "count": 30, "uniques": 20}, {"date": "2026-07-02", "count": 51, "uniques": 31}, {"date": "2026-07-03", "count": 46, "uniques": 24}, {"date": "2026-07-04", "count": 35, "uniques": 20}, {"date": "2026-07-05", "count": 38, "uniques": 20}], "year": [{"date": "2026-06-21", "count": 0, "uniques": 0}, {"date": "2026-06-22", "count": 0, "uniques": 0}, {"date": "2026-06-23", "count": 0, "uniques": 0}, {"date": "2026-06-24", "count": 0, "uniques": 0}, {"date": "2026-06-25", "count": 10, "uniques": 9}, {"date": "2026-06-26", "count": 35, "uniques": 22}, {"date": "2026-06-27", "count": 118, "uniques": 50}, {"date": "2026-06-28", "count": 7, "uniques": 4}, {"date": "2026-06-29", "count": 80, "uniques": 39}, {"date": "2026-06-30", "count": 40, "uniques": 22}, {"date": "2026-07-01", "count": 30, "uniques": 20}, {"date": "2026-07-02", "count": 51, "uniques": 31}, {"date": "2026-07-03", "count": 46, "uniques": 24}, {"date": "2026-07-04", "count": 35, "uniques": 20}, {"date": "2026-07-05", "count": 38, "uniques": 20}], "all": [{"date": "2026-06-21", "count": 0, "uniques": 0}, {"date": "2026-06-22", "count": 0, "uniques": 0}, {"date": "2026-06-23", "count": 0, "uniques": 0}, {"date": "2026-06-24", "count": 0, "uniques": 0}, {"date": "2026-06-25", "count": 10, "uniques": 9}, {"date": "2026-06-26", "count": 35, "uniques": 22}, {"date": "2026-06-27", "count": 118, "uniques": 50}, {"date": "2026-06-28", "count": 7, "uniques": 4}, {"date": "2026-06-29", "count": 80, "uniques": 39}, {"date": "2026-06-30", "count": 40, "uniques": 22}, {"date": "2026-07-01", "count": 30, "uniques": 20}, {"date": "2026-07-02", "count": 51, "uniques": 31}, {"date": "2026-07-03", "count": 46, "uniques": 24}, {"date": "2026-07-04", "count": 35, "uniques": 20}, {"date": "2026-07-05", "count": 38, "uniques": 20}]};
+        const referrersRaw = [];
+
+        const charts = {};
+
+        function createLineChart(canvasId, data, label, color) {
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            return new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.map(d => d.date),
+                    datasets: [
+                        {
+                            label: 'Total',
+                            data: data.map(d => d.count),
+                            borderColor: color,
+                            backgroundColor: color + '15',
+                            fill: true,
+                            tension: 0.3,
+                            pointRadius: 2,
+                            pointHoverRadius: 5,
+                            borderWidth: 2
+                        },
+                        {
+                            label: 'Unique',
+                            data: data.map(d => d.uniques),
+                            borderColor: '#8b949e',
+                            backgroundColor: 'transparent',
+                            fill: false,
+                            tension: 0.3,
+                            pointRadius: 2,
+                            pointHoverRadius: 5,
+                            borderWidth: 1.5,
+                            borderDash: [5, 5]
+                        }
+                    ]
                 },
-                y: {
-                    grid: { color: '#21262d' },
-                    ticks: { color: '#8b949e' }
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: {
+                            labels: { color: '#c9d1d9', usePointStyle: true, boxWidth: 8 }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: '#21262d' },
+                            ticks: { color: '#8b949e', maxRotation: 45, maxTicksLimit: 8 }
+                        },
+                        y: {
+                            grid: { color: '#21262d' },
+                            ticks: { color: '#8b949e' },
+                            beginAtZero: true
+                        }
+                    }
                 }
-            }
-        };
+            });
+        }
 
-        new Chart(document.getElementById('starsChart'), {
-            type: 'line',
-            data: {
-                labels: ["2026-07-06"],
-                datasets: [{
-                    label: 'Stars (cumulative)',
-                    data: [0],
-                    borderColor: '#58a6ff',
-                    backgroundColor: 'rgba(88, 166, 255, 0.1)',
-                    fill: true,
-                    tension: 0.3,
-                    pointRadius: 2,
-                    pointHoverRadius: 6
-                }]
-            },
-            options: {
-                ...commonOptions,
-                plugins: {
-                    legend: { display: false }
-                }
-            }
-        });
+        function aggregateReferrers(period) {
+            const today = new Date();
+            let cutoff = new Date(0);
+            if (period === 'month') cutoff = new Date(today - 30 * 86400000);
+            if (period === 'year') cutoff = new Date(today - 365 * 86400000);
 
-        new Chart(document.getElementById('viewsChart'), {
-            type: 'line',
-            data: {
-                labels: ["2026-06-21", "2026-06-22", "2026-06-23", "2026-06-24", "2026-06-25", "2026-06-26", "2026-06-27", "2026-06-28", "2026-06-29", "2026-06-30", "2026-07-01", "2026-07-02", "2026-07-03", "2026-07-04", "2026-07-05"],
-                datasets: [
-                    {
-                        label: 'Unique',
-                        data: [0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0],
+            const filtered = referrersRaw.filter(r => new Date(r.date) >= cutoff);
+            const grouped = {};
+            filtered.forEach(r => {
+                if (!grouped[r.referrer]) grouped[r.referrer] = { count: 0, uniques: 0 };
+                grouped[r.referrer].count += r.count;
+                grouped[r.referrer].uniques += r.uniques;
+            });
+
+            const sorted = Object.entries(grouped)
+                .map(([name, vals]) => ({ name, ...vals }))
+                .sort((a, b) => b.count - a.count)
+                .slice(0, 8);
+
+            return sorted;
+        }
+
+        function createReferrersChart(period) {
+            const data = aggregateReferrers(period);
+            const colors = ['#58a6ff', '#3fb950', '#a371f7', '#f0883e', '#f85149', '#79c0ff', '#56d364', '#d2a8ff'];
+
+            const ctx = document.getElementById('referrersChart').getContext('2d');
+
+            if (charts.referrers) charts.referrers.destroy();
+
+            charts.referrers = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.map(d => d.name),
+                    datasets: [{
+                        label: 'Views',
+                        data: data.map(d => d.count),
                         borderColor: '#58a6ff',
-                        backgroundColor: 'rgba(88, 166, 255, 0.1)',
+                        backgroundColor: 'rgba(88, 166, 255, 0.08)',
                         fill: true,
-                        tension: 0.3,
-                        pointRadius: 2
+                        tension: 0.4,
+                        pointRadius: 4,
+                        pointHoverRadius: 8,
+                        pointBackgroundColor: colors,
+                        pointBorderColor: colors,
+                        borderWidth: 2.5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(ctx) {
+                                    const d = data[ctx.dataIndex];
+                                    return d.count + ' views · ' + d.uniques + ' unique';
+                                }
+                            }
+                        }
                     },
-                    {
-                        label: 'Total',
-                        data: [0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 12, 0],
-                        borderColor: '#3fb950',
-                        backgroundColor: 'rgba(63, 185, 80, 0.05)',
-                        fill: true,
-                        tension: 0.3,
-                        pointRadius: 2
-                    }
-                ]
-            },
-            options: commonOptions
-        });
-
-        new Chart(document.getElementById('clonesChart'), {
-            type: 'line',
-            data: {
-                labels: ["2026-06-21", "2026-06-22", "2026-06-23", "2026-06-24", "2026-06-25", "2026-06-26", "2026-06-27", "2026-06-28", "2026-06-29", "2026-06-30", "2026-07-01", "2026-07-02", "2026-07-03", "2026-07-04", "2026-07-05"],
-                datasets: [
-                    {
-                        label: 'Unique',
-                        data: [0, 0, 0, 0, 9, 22, 50, 4, 39, 22, 20, 31, 24, 20, 20],
-                        borderColor: '#58a6ff',
-                        backgroundColor: 'rgba(88, 166, 255, 0.1)',
-                        fill: true,
-                        tension: 0.3,
-                        pointRadius: 2
-                    },
-                    {
-                        label: 'Total',
-                        data: [0, 0, 0, 0, 10, 35, 118, 7, 80, 40, 30, 51, 46, 35, 38],
-                        borderColor: '#a371f7',
-                        backgroundColor: 'rgba(163, 113, 247, 0.05)',
-                        fill: true,
-                        tension: 0.3,
-                        pointRadius: 2
-                    }
-                ]
-            },
-            options: commonOptions
-        });
-
-        new Chart(document.getElementById('commitsChart'), {
-            type: 'bar',
-            data: {
-                labels: ["2026-06-21", "2026-06-28", "2026-07-05"],
-                datasets: [
-                    {
-                        label: 'Additions',
-                        data: [2332, 8220, 200],
-                        backgroundColor: '#3fb950',
-                        borderRadius: 3
-                    },
-                    {
-                        label: 'Deletions',
-                        data: [-480, -4573, -125],
-                        backgroundColor: '#f85149',
-                        borderRadius: 3
-                    }
-                ]
-            },
-            options: {
-                ...commonOptions,
-                scales: {
-                    x: {
-                        stacked: true,
-                        grid: { color: '#21262d' },
-                        ticks: { color: '#8b949e', maxRotation: 45 }
-                    },
-                    y: {
-                        stacked: true,
-                        grid: { color: '#21262d' },
-                        ticks: { color: '#8b949e' }
+                    scales: {
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: '#c9d1d9', font: { size: 11 } }
+                        },
+                        y: {
+                            grid: { color: '#21262d' },
+                            ticks: { color: '#8b949e' },
+                            beginAtZero: true
+                        }
                     }
                 }
+            });
+        }
+
+        function switchPeriod(chartName, period) {
+            document.querySelectorAll('.period-tabs[data-chart="' + chartName + '"] button').forEach(btn => {
+                btn.classList.toggle('active', btn.textContent.toLowerCase().includes(period === 'all' ? 'all' : period === 'month' ? 'month' : 'year'));
+            });
+
+            if (chartName === 'views') {
+                const data = viewsData[period];
+                charts.views.data.labels = data.map(d => d.date);
+                charts.views.data.datasets[0].data = data.map(d => d.count);
+                charts.views.data.datasets[1].data = data.map(d => d.uniques);
+                charts.views.update();
+            } else if (chartName === 'clones') {
+                const data = clonesData[period];
+                charts.clones.data.labels = data.map(d => d.date);
+                charts.clones.data.datasets[0].data = data.map(d => d.count);
+                charts.clones.data.datasets[1].data = data.map(d => d.uniques);
+                charts.clones.update();
+            } else if (chartName === 'referrers') {
+                createReferrersChart(period);
             }
-        });
+        }
 
-        new Chart(document.getElementById('issuesChart'), {
-            type: 'line',
-            data: {
-                labels: ["2026-07-06"],
-                datasets: [
-                    {
-                        label: 'Open',
-                        data: [0],
-                        borderColor: '#f0883e',
-                        backgroundColor: 'rgba(240, 136, 62, 0.1)',
-                        fill: true,
-                        tension: 0.3,
-                        pointRadius: 3
-                    },
-                    {
-                        label: 'Closed',
-                        data: [0],
-                        borderColor: '#3fb950',
-                        backgroundColor: 'rgba(63, 185, 80, 0.1)',
-                        fill: true,
-                        tension: 0.3,
-                        pointRadius: 3
-                    }
-                ]
-            },
-            options: commonOptions
-        });
-
+        charts.views = createLineChart('viewsChart', viewsData.month, 'Views', '#58a6ff');
+        charts.clones = createLineChart('clonesChart', clonesData.month, 'Clones', '#3fb950');
+        createReferrersChart('month');
     </script>
 </body>
 </html>
