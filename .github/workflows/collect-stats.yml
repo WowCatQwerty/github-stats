@@ -2,11 +2,8 @@ name: Collect GitHub Stats
 
 on:
   schedule:
-    # Запуск каждые 14 дней в 3:00 UTC
     - cron: '0 3 */14 * *'
-  # Или можно запускать ежедневно, чтобы не пропустить данные:
-  # - cron: '0 3 * * *'
-  workflow_dispatch:  # Ручной запуск через кнопку
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -20,7 +17,6 @@ concurrency:
 jobs:
   collect-and-build:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -62,17 +58,3 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add data/stats.db
-          git diff --cached --quiet || git commit -m "Update stats DB [$(date +%Y-%m-%d)]"
-          git push
-
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: docs
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
